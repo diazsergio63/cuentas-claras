@@ -164,7 +164,7 @@ html, body {
 
 /* ── INICIO ── */
 .inicio-hero {
-  background: linear-gradient(135deg, var(--azul) 0%, var(--verde) 100%);
+  background: linear-gradient(135deg, #2D6A4F 0%, var(--verde) 100%);
   border-radius: var(--radio-lg);
   padding: 28px 24px;
   color: var(--blanco);
@@ -1361,7 +1361,7 @@ const CATS_FIJAS = [
 // ── VERSIÓN DE LA APP ──
 // ⚡ Para publicar una actualización: incrementá este número (ej: 3, 4, 5...)
 const APP_VERSION = 2;
-const APP_BUILD = '2026.10.30.3'; // Cambiá esto con cada deploy a Netlify
+const APP_BUILD = '2026.10.30.4'; // Cambiá esto con cada deploy a Netlify
 
 // ── MIGRACIÓN AUTOMÁTICA ──
 function migrar(data) {
@@ -1562,8 +1562,9 @@ function renderCatLista() {
       <span class="cat-nombre">${c.nombre}${esFija ? ' <span style="font-size:10px;color:var(--gris-500)">fija</span>' : ''}</span>
       <span class="cat-ppto-wrap">
         <span class="cat-ppto-sim">${simboloMoneda()}</span>
-        <input type="number" class="form-input cat-ppto-input" min="0" placeholder="0" value="${c.presupuesto || ''}"
-          onblur="guardarPptoCat(${c.id}, this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+        <input type="text" inputmode="numeric" class="form-input cat-ppto-input" placeholder="0" value="${c.presupuesto ? c.presupuesto.toLocaleString('es-AR') : ''}"
+          onfocus="this.value=this.value.replace(/\\./g,'')" oninput="this.value=this.value.replace(/\\D/g,'')"
+          onblur="guardarPptoCat(${c.id}, this)" onkeydown="if(event.key==='Enter')this.blur()">
       </span>
       ${esFija ? '<span style="width:24px"></span>' : `<button class="cat-borrar" onclick="borrarCat(${c.id})">×</button>`}`;
     ul.appendChild(li);
@@ -1575,10 +1576,11 @@ function borrarCat(id) {
   renderCatLista();
 }
 
-function guardarPptoCat(id, valor) {
+function guardarPptoCat(id, input) {
   const c = state.ajustes.categorias.find(c => c.id === id);
   if (!c) return;
-  const p = Math.max(0, +valor || 0);
+  const p = Math.max(0, +input.value.replace(/\./g, '') || 0);
+  input.value = p ? p.toLocaleString('es-AR') : '';
   if (p === (c.presupuesto || 0)) return;
   c.presupuesto = p;
   guardar();
