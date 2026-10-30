@@ -164,7 +164,7 @@ html, body {
 
 /* ── INICIO ── */
 .inicio-hero {
-  background: linear-gradient(135deg, #2D6A4F 0%, var(--verde) 100%);
+  background: linear-gradient(135deg, #3d8b6e 0%, #2d9e6b 100%);
   border-radius: var(--radio-lg);
   padding: 28px 24px;
   color: var(--blanco);
@@ -179,7 +179,7 @@ html, body {
 }
 .inicio-hero p {
   font-size: 14px;
-  opacity: 0.85;
+  opacity: 1;
   line-height: 1.5;
   max-width: 480px;
 }
@@ -773,9 +773,9 @@ html, body {
 [data-tema="oscuro"] .btn-outline:hover { border-color: #4ADE80; color: #4ADE80; }
 [data-tema="oscuro"] .pwa-os-tab { background: #0F172A; border-color: #334155; color: #CBD5E1; }
 [data-tema="oscuro"] .btn-tema { background: #334155; border-color: #475569; }
-[data-tema="oscuro"] .inicio-hero { background: linear-gradient(135deg, #0F172A 0%, #052E16 100%); }
-[data-tema="oscuro"] .inicio-hero h1 { color: #F1F5F9; }
-[data-tema="oscuro"] .inicio-hero p { color: #94A3B8; }
+[data-tema="oscuro"] .inicio-hero { background: linear-gradient(135deg, #3d8b6e 0%, #2d9e6b 100%); }
+[data-tema="oscuro"] .inicio-hero h1 { color: #FFFFFF; }
+[data-tema="oscuro"] .inicio-hero p { color: #FFFFFF; }
 [data-tema="oscuro"] .inicio-nombre input { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: #E2E8F0; }
 [data-tema="oscuro"] .nav-brand { color: #4ADE80; }
 [data-tema="oscuro"] .nav-user { color: #64748B; }
@@ -1361,7 +1361,7 @@ const CATS_FIJAS = [
 // ── VERSIÓN DE LA APP ──
 // ⚡ Para publicar una actualización: incrementá este número (ej: 3, 4, 5...)
 const APP_VERSION = 2;
-const APP_BUILD = '2026.10.30.4'; // Cambiá esto con cada deploy a Netlify
+const APP_BUILD = '2026.10.30.5'; // Cambiá esto con cada deploy a Netlify
 
 // ── MIGRACIÓN AUTOMÁTICA ──
 function migrar(data) {
@@ -1430,8 +1430,37 @@ function verificarActualizacion() {
   } catch(e) {}
 }
 
+// ── DETECCIÓN AUTOMÁTICA AL VOLVER A LA PESTAÑA ──
+let ultimaVerificacionBuild = Date.now();
+let bannerUpdateMostrado = false;
+let buildServidor = null; // último build detectado en el servidor
+
+function buildMayor(a, b) {
+  const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d > 0;
+  }
+  return false;
+}
+
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || bannerUpdateMostrado) return;
+  if (Date.now() - ultimaVerificacionBuild < 5 * 60 * 1000) return;
+  ultimaVerificacionBuild = Date.now();
+  try {
+    const res = await fetch('index.html?nocache=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const m = (await res.text()).match(/const APP_BUILD = '([\d.]+)'/);
+    if (!m || !buildMayor(m[1], APP_BUILD)) return;
+    buildServidor = m[1];
+    const banner = document.getElementById('banner-update');
+    if (banner) { banner.style.display = 'flex'; bannerUpdateMostrado = true; }
+  } catch(e) {}
+});
+
 function aplicarActualizacion() {
-  try { localStorage.setItem('cc_app_build', APP_BUILD); } catch(e) {}
+  try { localStorage.setItem('cc_app_build', buildServidor || APP_BUILD); } catch(e) {}
   window.location.reload(true); // Fuerza recarga desde servidor
 }
 
