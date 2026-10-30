@@ -336,7 +336,10 @@ html, body {
 .cat-tipo.D { background: var(--amarillo-claro); color: #92400E; }
 .cat-tipo.S { background: #DCFCE7; color: #15803D; }
 .cat-tipo.A { background: #FEF9C3; color: #A16207; }
-.cat-nombre { flex: 1; font-size: 14px; }
+.cat-nombre { flex: 1; min-width: 0; font-size: 14px; overflow-wrap: anywhere; }
+.cat-ppto-wrap { display: flex; align-items: center; gap: 4px; }
+.cat-ppto-sim { font-size: 13px; color: var(--gris-500); }
+.cat-ppto-input { width: 96px; padding: 6px 8px; font-size: 13px; text-align: right; }
 .cat-presupuesto {
   font-size: 13px;
   font-family: 'Inter', system-ui, sans-serif;
@@ -1156,6 +1159,7 @@ html, body {
             <p>&nbsp;&nbsp;&nbsp;🎉 <strong>Deseo</strong> — gastos opcionales: salidas, ropa, Netflix, viajes</p>
             <p>&nbsp;&nbsp;&nbsp;💰 <strong>Ahorro</strong> — categoría para apartar dinero hacia una meta</p>
             <p>&nbsp;&nbsp;&nbsp;💳 <strong>Deuda</strong> — cuotas de préstamos o compromisos a largo plazo</p>
+            <p>Ya hay categorías predeterminadas listas para usar. Podés completar el monto de presupuesto de cada una, borrar las que no necesitás y crear las tuyas propias.</p>
             <p>También podés cambiar los porcentajes 50/30/20. Solo tienen que sumar 100.</p>
           </div>
         </div>
@@ -1357,7 +1361,7 @@ const CATS_FIJAS = [
 // ── VERSIÓN DE LA APP ──
 // ⚡ Para publicar una actualización: incrementá este número (ej: 3, 4, 5...)
 const APP_VERSION = 2;
-const APP_BUILD = '2026.10.30.2'; // Cambiá esto con cada deploy a Netlify
+const APP_BUILD = '2026.10.30.3'; // Cambiá esto con cada deploy a Netlify
 
 // ── MIGRACIÓN AUTOMÁTICA ──
 function migrar(data) {
@@ -1462,10 +1466,12 @@ function cerrarModalExport() {
 }
 
 // ── FORMATO ──
+function simboloMoneda() {
+  return (state.ajustes.moneda || 'ARS') === 'EUR' ? '€' : '$';
+}
 function fmt(n) {
-  const m = state.ajustes.moneda || 'ARS';
-  const sym = m === 'EUR' ? '€' : '$';
-  return sym + Number(n||0).toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:0});
+  const sym = simboloMoneda();
+  return sym +Number(n||0).toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:0});
 }
 function mesStr(y,m) {
   const nombres = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -1554,7 +1560,11 @@ function renderCatLista() {
     li.innerHTML = `
       <span class="cat-tipo ${c.tipo}">${tipoLabel}</span>
       <span class="cat-nombre">${c.nombre}${esFija ? ' <span style="font-size:10px;color:var(--gris-500)">fija</span>' : ''}</span>
-      <span class="cat-presupuesto">${c.presupuesto ? fmt(c.presupuesto) : '—'}</span>
+      <span class="cat-ppto-wrap">
+        <span class="cat-ppto-sim">${simboloMoneda()}</span>
+        <input type="number" class="form-input cat-ppto-input" min="0" placeholder="0" value="${c.presupuesto || ''}"
+          onblur="guardarPptoCat(${c.id}, this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+      </span>
       ${esFija ? '<span style="width:24px"></span>' : `<button class="cat-borrar" onclick="borrarCat(${c.id})">×</button>`}`;
     ul.appendChild(li);
   });
@@ -1565,9 +1575,26 @@ function borrarCat(id) {
   renderCatLista();
 }
 
+function guardarPptoCat(id, valor) {
+  const c = state.ajustes.categorias.find(c => c.id === id);
+  if (!c) return;
+  const p = Math.max(0, +valor || 0);
+  if (p === (c.presupuesto || 0)) return;
+  c.presupuesto = p;
+  guardar();
+}
+
 function agregarCategoria() {
   const n = document.getElementById('cat-nombre').value.trim();
   if (!n) { document.getElementById('cat-nombre').focus(); return; }
+  const norm = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
+  const fijasIdsDup = CATS_FIJAS.map(c => c.id);
+  const existentes = [...CATS_FIJAS, ...state.ajustes.categorias.filter(c => !fijasIdsDup.includes(c.id))];
+  if (existentes.some(c => norm(c.nombre) === norm(n))) {
+    showToast('Ya existe una categoría con ese nombre.');
+    document.getElementById('cat-nombre').focus();
+    return;
+  }
   const t = document.getElementById('cat-tipo').value;
   const p = +document.getElementById('cat-ppto').value || 0;
   const id = Date.now();
